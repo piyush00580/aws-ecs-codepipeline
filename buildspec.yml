@@ -1,24 +1,21 @@
 version: 0.2
 
 phases:
-  pre_build:
-    commands:
-      - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 838118687336.dkr.ecr.ap-south-1.amazonaws.com
+pre_build:
+commands:
+- echo "Logging in to Amazon ECR..."
+- aws sts get-caller-identity
+- aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin "$ECR_URI"
 
-  build:
-    commands:
-      - echo Build started on `date`
-      - echo Building Docker image...
-      - docker build -t devops-lab5-app .
-      - docker tag devops-lab5-app:latest 838118687336.dkr.ecr.ap-south-1.amazonaws.com/devops-lab5-app:latest
-
-  post_build:
-    commands:
-      - echo Pushing Docker image to ECR...
-      - docker push 838118687336.dkr.ecr.ap-south-1.amazonaws.com/devops-lab5-app:latest
-      - echo Build completed on `date`
+build:
+commands:
+- echo "Building Docker image..."
+- docker build -t "$ECR_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION" .
+- echo "Pushing Docker image..."
+- docker push "$ECR_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+- echo "Creating imagedefinitions.json..."
+- printf '[{"name":"lab5-app","imageUri":"%s"}]' "$ECR_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION" > imagedefinitions.json
 
 artifacts:
-  files:
-    - '**/*'
+files:
+- imagedefinitions.json
